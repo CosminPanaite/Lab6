@@ -1,0 +1,7 @@
+var n : int; c: int ; sum: int; i: int
+{read(n);
+sum:=0;
+ c:=10;
+ i:=40;
+ write(sum)
+}

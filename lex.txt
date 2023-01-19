@@ -1,0 +1,145 @@
+%{
+#include "yac1b.tab.h"
+#include <string.h>
+
+typedef struct {
+    char token[257];
+    int symbolTableCode;
+}PIF;
+
+typedef struct{
+    char token[257];
+    int index;
+}ST;
+
+ST SymbolTable[100];
+int stLength = 0;
+
+PIF ProgramInternalForm[300];
+int pifLength = 0;
+
+int errorFound = 0;
+int lineNumber = 1;
+
+
+int addToST(char* token) {
+	for(int i = 0; i < stLength; i++) {
+		
+		if(strcmp(SymbolTable[i].token, token) == 0) {
+		  return SymbolTable[i].index;
+		}
+	}
+	strcpy(SymbolTable[stLength].token, token);
+	SymbolTable[stLength].index = stLength;
+	stLength++;
+	
+	return stLength - 1;
+}
+
+void addToPIF(char* token, int stCode) {
+	//printf("%s\n", token);
+	strcpy(ProgramInternalForm[pifLength].token, token);
+	ProgramInternalForm[pifLength].symbolTableCode = stCode;
+	
+	pifLength++;
+}
+
+void showSymbolTable() {
+    printf("~~~~~~~ Symbol table ~~~~~~~\n");
+    
+    for(int i = 0 ; i < stLength; i++) {
+        printf(" %s  %d", SymbolTable[i].token, SymbolTable[i].index);
+        printf("\n");
+    }
+    
+    printf("~~~~~~~ End ST ~~~~~~~\n");
+    printf("\n");
+}
+
+void showProgramInternalForm() {
+    printf("~~~~~~~ Program internal form ~~~~~~~\n");
+    
+    for(int i = 0; i < pifLength; i++) {
+    
+        printf(" %s  %d ", ProgramInternalForm[i].token, ProgramInternalForm[i].symbolTableCode);
+        printf("\n");
+    }
+    
+    printf("~~~~~~~ End PIF ~~~~~~~\n");
+    printf("\n");
+}
+%}
+
+%option noyywrap
+%option caseless
+
+LETTER	[A-Za-z]
+DIGIT	[0-9]
+NOTNULLDIGIT	[1-9]
+NO {NOTNULLDIGIT}+{DIGIT}*
+IDENTIFICATOR	{LETTER}|{LETTER}+{LETTER}*+{DIGIT}*
+CHAR {LETTER}|{DIGIT}
+BOOL 'true'|'false'
+stringct        [\"][^\n]*[\"]
+integerct   {NO}|0
+
+
+
+%%
+array		{addToPIF(yytext, -1); return ARRAY;}
+const		{addToPIF(yytext, -1); return CONST;}
+do		{addToPIF(yytext, -1); return DO;}
+else		{addToPIF(yytext, -1); return ELSE;}
+if		{addToPIF(yytext, -1); return IF;}
+while		{addToPIF(yytext, -1); return WHILE;}
+read		{addToPIF(yytext, -1); return READ;}
+Write		{addToPIF(yytext, -1); return WRITE;}
+true		{addToPIF(yytext, -1); return TRUE;}
+false		{addToPIF(yytext, -1); return FALSE;}
+int		{addToPIF(yytext, -1); return INTEGER;}
+then		{addToPIF(yytext, -1); return THEN;}
+var		{addToPIF(yytext, -1); return VAR;}
+for		{addToPIF(yytext, -1); return FOR;}
+
+{IDENTIFICATOR} {int stCode = addToST(yytext); addToPIF(yytext, stCode); return IDENTIFIER;}
+[ \t\n]+ ;
+
+{integerct}	{int stCode = addToST(yytext); addToPIF(yytext, stCode); 
+				
+		 return INT_CT;}
+
+{stringct}     {int stCode = addToST(yytext); addToPIF(yytext, stCode); 
+				
+		return STRING_CT;}
+
+"+"|"-"|"*"|"/" {addToPIF(yytext, -1); return *yytext;}
+"["|"]"|"{"|"}"|"("|")"|";"|":"  {addToPIF(yytext, -1); return *yytext;} 
+"<="|":="|"=>"|">"|"==" {addToPIF(yytext, -1); return *yytext;} 
+[\n]		{ ++lineNumber; }
+[ \t]+        { ; /* ignore spaces and tabs */}
+.           { errorFound = 1; printf("Illegat token %s at line %d\n", yytext, lineNumber); }
+%%
+/* yywrap() - wraps the above rule section */
+int yywrap() {}
+
+int main(int argc, char** argv) {
+
+	FILE *fp;
+	fp = fopen(argv[1], "r");
+	
+	/* yyin - takes the file pointer which contains the input*/
+	yyin = fp;
+
+	/* yylex() - this is the main flex function which runs the Rule Section*/ 
+	
+	if(!yyparse()) {
+		fprintf(stderr,"Program syntactic correct\n");
+	}
+
+	if (errorFound == 0) {
+    	showSymbolTable();
+    	showProgramInternalForm();
+	}
+  
+	return 0;
+}

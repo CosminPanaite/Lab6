@@ -1,0 +1,4 @@
+flex lex.txt
+bison -d yac1b.y
+gcc lex.yy.c yac1b.tab.c -o rezultat
+rezultat<program.txt
